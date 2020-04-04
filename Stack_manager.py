@@ -4,9 +4,10 @@ class stack():
 
     def push(self,item):
         self.item.append(item)
-    def is_empty(self):
 
+    def is_empty(self):
         return self.item == []
+
     def __str__(self):
         return f'Asi va el vector {self.item}'
 

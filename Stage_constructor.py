@@ -3,7 +3,7 @@ from Transistor_manager import TransistorManager
 
 class Stage:
     def __init__(self, model):
-        self.VCC_nominal = [3, 5, 9, 12, 18, 24, 30]
+        self.VCC_nominal = [3, 5, 9, 12, 18, 24, 30, 35, 40, 50, 100, 200]
         self.VT = 0.026
         self.index = 0
         self.T = TransistorManager(model)
@@ -11,40 +11,34 @@ class Stage:
         self.parameters = {}
         self.pi = 3.141592
 
-    def buld_stage_CC(self, RL, Ren, VCC, fc, hfe, darlinton):
-        self.parameters['ICQ'] = self.Values_model_transistor['IC.Stable']
-        self.parameters['Hib'] = self.VT/self.parameters['ICQ']
-        self.parameters['VCC'] = VCC
-        if darlinton:
-            self.parameters['hfe'] = hfe
-            self.parameters['VBE'] = 1.4
-        else:
-            self.parameters['hfe'] = self.Values_model_transistor['hfe.MAX']*0.7
-            self.parameters['VBE'] = 0.7
-        self.parameters['Hie'] = self.parameters['hfe']*self.parameters['Hib']
-        if self.parameters['Hie'] + self.parameters['hfe']*0.5*RL >= Ren:
-            self.parameters['RL'] = RL
-            self.parameters['Re'] = VCC/(1.5*self.parameters['ICQ'])
-            self.parameters['RB'] = Ren*(self.parameters['Hie']+self.parameters['hfe']*RL*0.5)/((self.parameters['Hie']+self.parameters['hfe']*RL*0.5)-Ren)
-            self.parameters['VBB'] = self.parameters['ICQ']/self.parameters['hfe']*(self.parameters['RB']+(self.parameters['hfe']+1)*self.parameters['Re']) + self.parameters['VBE']
-            if self.parameters['VBB'] > VCC:
-                for self.index in range(len(self.VCC_nominal)):
-                    self.parameters['VCC'] = self.VCC_nominal[self.index]
-                if self.parameters['VBB'] > VCC:
-                    raise AssertionError('Valor de Ren no apropiado, intente con un transistor con mayor hfe')
-            self.parameters['R1'] = self.parameters['RB']*VCC/self.parameters['VBB']
-            self.parameters['R2'] = self.parameters['RB']*VCC/(VCC - self.parameters['VBB'])
-            self.parameters['C1'] = 10 / (2 * self.pi * fc * RL)
-            self.parameters['C2'] = 10 / (2 * self.pi * fc * 2 * RL)
-            return self.parameters
-        else:
-            raise AssertionError('No es posible hacer la maxima excursion')
-
-    def build_stage_RS_EC(self, RL, RS, AV, fc, VCC):
+    def build_stage_CC(self, RS, RL, fc, AI, VCC):
         self.parameters['RS'] = RS
-        return self.build_stage_EC(RL, AV, fc, VCC)
+        self.parameters['ICQ'] = self.Values_model_transistor['IC.Stable']*0.1
+        self.parameters['Hib'] = self.VT/self.parameters['ICQ']
+        self.parameters['hfe_MID'] = self.Values_model_transistor['hfe.MAX']*0.5
+        if self.Values_model_transistor['Darlington']:
+             self.parameters['VBE'] = 1.4
+        else:
+            self.parameters['VBE'] = 0.7
+        self.parameters['Hie'] = self.parameters['hfe_MID']*self.parameters['Hib']
+        self.parameters['RL'] = RL
+        self.parameters['Re'] = VCC/self.parameters['ICQ'] - RL
+        self.parameters['RB'] = AI*RL
+        self.parameters['Ren'] = self.parallel(self.parameters['RB'], self.parameters['Hie'] + 0.5*self.parameters['hfe_MID']*RL) + self.parameters['RS']
+        if 0.1*self.parameters['hfe_MID']*self.parameters['Re'] < self.parameters['RB']:
+            self.parameters['Stable_status'] = False
+        else:
+            self.parameters['Stable_status'] = True
+        self.parameters['IB'] = self.parameters['ICQ']/self.parameters['hfe_MID']
+        self.parameters['VBB'] =self.parameters['IB']*(self.parameters['RB']+(self.parameters['hfe_MID']+1)*self.parameters['Re']) + self.parameters['VBE']
+        self.parameters['R1'] = self.parameters['RB']*VCC/self.parameters['VBB']
+        self.parameters['R2'] = self.parameters['RB']*VCC/(VCC - self.parameters['VBB'])
+        self.parameters['C1'] = 10 / (2 * self.pi * fc* self.parameters['Ren'])
+        self.parameters['C2'] = 10 / (2 * self.pi * fc* (self.parameters['Re'] + RL))
+        return self.parameters
 
-    def build_stage_EC(self, RL, AV, fc, VCC):
+    def build_stage_EC(self, RS, RL, AV, fc, VCC):
+        self.parameters['RS'] = RS
         self.parameters['AV'] = AV
         self.parameters['RL'] = RL
         self.parameters['hfe_MID'] = self.Values_model_transistor['hfe.MAX']*0.5
@@ -59,7 +53,7 @@ class Stage:
             self.parameters['VCC'] = self.vcc_selection_ec()
         self.parameters['Re2'] = self.parameters['VCC']/self.parameters['ICQ'] - self.parameters['RL']*1.5
         self.parameters['Re'] = self.parameters['Re2'] + self.parameters['Re1']
-        self.parameters['RB'] = self.parameters['Re']*0.02*self.parameters['hfe_MID']
+        self.parameters['RB'] = self.parameters['Re']*0.1*self.parameters['hfe_MID']
         self.parameters['IB'] = self.parameters['ICQ']/self.parameters['hfe_MID']
         self.parameters['VBB'] = self.parameters['IB']*(self.parameters['RB'] + (self.parameters['hfe_MID'] + 1)*self.parameters['Re']) + 0.7
         self.parameters['R1'] = self.parameters['VCC']*self.parameters['RB']/self.parameters['VBB']
@@ -67,9 +61,9 @@ class Stage:
         self.parameters['Ren'] = self.parallel(self.parameters['RB'],self.parameters['hfe_MID']*(self.parameters['Hib']+self.parameters['Re']))
         self.parameters['Stable_status'] = self.parameters['Re1'] >= self.parameters['Hib']*8
         self.parameters['AI'] = AV*(self.parameters['Ren']/RL)
-        self.parameters['C1'] = 10/(2*self.pi*fc*self.parameters['Ren'])
-        self.parameters['C2'] = 10/(2*self.pi*fc*2*RL)
-        self.parameters['C3'] = 10/(2*self.pi*fc*self.parallel(self.parameters['RB']+self.parameters['Hib'],self.parameters['Re']))
+        self.parameters['C1'] = 10/(2*self.pi*fc*0.1*self.parameters['Ren'])
+        self.parameters['C2'] = 10/(2*self.pi*fc*0.1*2*RL)
+        self.parameters['C3'] = 10/(2*self.pi*fc*0.1*self.parallel(self.parameters['RB']+self.parameters['Hib'],self.parameters['Re']))
     def vcc_selection_ec(self):
         self.VCC_Minimun = self.parameters['ICQ'] * (1.5 * self.parameters['RL'] + self.parameters['Re1'])
         for self.index in range(len(self.VCC_nominal)):
@@ -81,3 +75,4 @@ class Stage:
 
     def get_parameters(self):
         return self.parameters
+

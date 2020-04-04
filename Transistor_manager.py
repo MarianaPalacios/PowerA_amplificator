@@ -57,6 +57,7 @@ class TransistorManager:
             return self.transistor_specs
         else:
             raise AssertionError('No se encontro el transistor')
+
     def show_transitors_avaliables(self):
         for self.index in self.shape[1]:
             while self.transistors_content[self.index][self.tmp_index] != ',':
