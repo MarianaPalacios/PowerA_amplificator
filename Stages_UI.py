@@ -1,25 +1,28 @@
-from PyQt5.QtWidgets import QGridLayout, QTabWidget, QListWidget, QLineEdit, QPlainTextEdit, QListWidgetItem, QMessageBox, QVBoxLayout, QApplication, QLabel, QWidget, QSizePolicy, QMenuBar, QAction, QMainWindow, QPushButton, QGroupBox, QHBoxLayout, QRadioButton
+from PyQt5.QtWidgets import QGridLayout, QTabWidget ,QListWidget, QLineEdit, QPlainTextEdit, QListWidgetItem, QMessageBox, QVBoxLayout, QApplication, QLabel, QWidget, QSizePolicy, QMenuBar, QAction, QMainWindow, QPushButton, QGroupBox, QHBoxLayout, QRadioButton
+from PyQt5.QtWidgets import QFileDialog
 import sys
+from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
 from PyQt5.QtGui import QIcon, QPalette, QMovie, QFont, QPixmap
-from PyQt5.QtCore import Qt, QByteArray, QSize
+from PyQt5.QtCore import Qt, QByteArray, QSize, QFileInfo
 from Transistor_manager import TransistorManager
+import Component_manager
 from Stage_constructor import Stage
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.left = 500
-        self.top = 200
-        self.width = 300
-        self.height = 250
         self.setWindowTitle("Transistor Wizard")
-        self.mainIcon = "transistor.jpg"
+        self.mainIcon = "Icons/Amplifier.png"
+        self.clip = "Icons/MainBackground.gif"
         self.conftran = Conftran()
+        self.confdata = ConfData()
+        self.confsheet = ConfSheet()
+        self.help_window = help()
         self.parameters_conf = 0
         self.initWindow()
 
     def initWindow(self):
-        self.setGeometry(self.left, self.top, self.width, self.height)
+        self.setWindowIcon(QIcon(self.mainIcon))
         p = self.palette()
         p.setColor(QPalette.Window, Qt.white)
         self.setPalette(p)
@@ -31,51 +34,38 @@ class MainWindow(QMainWindow):
         fileMenu = mainMenu.addMenu("Archivo")
         HelpMenu = mainMenu.addMenu("Ayuda")
 
-        SaveAction = QAction(QIcon(self.mainIcon), "Guardar como pdf", self)
-        SaveAction.setShortcut("ctrpl+g")
-        fileMenu.addAction(SaveAction)
-
         ResetConfigAction = QAction(QIcon(self.mainIcon), "Nueva configuracion", self)
-        ResetConfigAction.setShortcut("ctrpl+r")
+        ResetConfigAction.setShortcut("ctrl+r")
         fileMenu.addAction(ResetConfigAction)
+        ResetConfigAction.setIcon(QIcon("Icons/new_file.png"))
+        ResetConfigAction.triggered.connect(self.reset_conf)
 
         HelpAction = QAction(QIcon(self.mainIcon), "Acerca de", self)
-        HelpAction.setShortcut("ctrpl+f")
+        HelpAction.setIcon(QIcon("Icons/help.png"))
+        HelpAction.setShortcut("ctrl+f")
         HelpMenu.addAction(HelpAction)
+        HelpAction.triggered.connect(self.help)
 
     def widget(self):
-        self.vbox = QVBoxLayout()
-        self.hbox = QHBoxLayout()
-        self.gif()
+        self.grid = QGridLayout()
+        self.gif(self.clip)
+        self.create_button()
+        self.open_tabs()
+        self.Int_UI = QWidget()
+        self.Int_UI.setLayout(self.grid)
+        self.setCentralWidget(self.Int_UI)
 
-        self.datasheet = QPlainTextEdit()
-        self.datasheet.setReadOnly(True)
-        self.datasheet.setFont(QFont("Times", 20))
-        self.btn_start = QPushButton("Iniciar configuracion")
-        self.btn_start.setSizePolicy(QSizePolicy.Minimum,QSizePolicy.Expanding)
-        self.btn_start.setFont(QFont("Times", 15))
-        self.btn_start.clicked.connect(self.btn_start_config)
-        ##gif configuracion
+    def help(self):
+        self.help_window.show()
 
-        self.tabs
-        ##Tabs para mostrar datos de la configuracion
+    def open_tabs(self):
         self.tabs = QTabWidget()
-        self.tabWidget.addTab(ConfData(), "Configuracion de transistor")
-        self.tabWidget.addTab(ConfSheet(), "Datos comerciales")
+        self.tabs.addTab(self.confdata, "Configuracion de transistor")
+        self.tabs.addTab(self.confsheet, "Datos comerciales")
 
-        self.hbox.addWidget(self.conf_sheet)
-        self.hbox.addWidget(self.tabs)
-
-        self.vbox.addWidget(self.btn_start)
-        self.btn_start.setIcon(QIcon("Icons/Transistor.png"))
-        self.btn_start.setIconSize(QSize(150,150))
-        widget = QWidget()
-        widget.setLayout(self.vbox)
-        self.setCentralWidget(widget)
-
-    def gif(self):
+    def gif(self, clip):
         ##Configuracion del gif#########
-        self.movie = QMovie("Icons/gif.gif", QByteArray(), self)
+        self.movie = QMovie(clip, QByteArray(), self)
         self.movie_screen = QLabel()
         self.movie_screen.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.movie_screen.setAlignment(Qt.AlignCenter)
@@ -83,121 +73,90 @@ class MainWindow(QMainWindow):
         self.movie_screen.setMovie(self.movie)
         self.movie.start()
         self.movie.loopCount()
-        self.vbox.addWidget(self.movie_screen)
+        self.grid.addWidget(self.movie_screen, 0, 0)
+
     def btn_start_config(self):
         self.conftran.show()
         self.close()
 
+    def create_button(self):
+        self.btn_start = QPushButton("Iniciar configuración")
+        self.btn_start.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.btn_start.setFont(QFont("Times", 40))
+        self.btn_start.setIcon(QIcon("Icons/Transistor.png"))
+        self.btn_start.setIconSize(QSize(150, 150))
+        self.btn_start.clicked.connect(self.btn_start_config)
+        self.grid.addWidget(self.btn_start, 1, 0)
+
+    def reset_conf(self):
+        if mainwindow.conftran.parameters.reset_enable == True:
+            self.close()
+            self.movie_screen.close()
+            self.tabs.close()
+            self.open_tabs()
+            self.grid.removeWidget(self.movie_screen)
+            self.grid.removeWidget(self.tabs)
+            self.clip = "Icons/MainBackground.gif"
+            self.gif(self.clip)
+            self.create_button()
+            ##clean parameters
+
+            self.conftran.parameters.AV_textedit.clear()
+            self.conftran.parameters.AI_textedit.clear()
+            self.conftran.parameters.RL_textedit.clear()
+            self.conftran.parameters.RS_textedit.clear()
+            self.conftran.parameters.VCC_textedit.clear()
+            self.conftran.parameters.F_textedit.clear()
+
+            mainwindow.conftran.parameters.reset_enable = False
+
+            self.showMaximized()
+
+
+
+
 class ConfSheet(QWidget):
     def __init__(self):
         super().__init__()
-        vbox = QVBoxLayout
-        self.conf_sheet = QPlainTextEdit()
+        vbox = QVBoxLayout()
+        hbox = QHBoxLayout()
+        self.conf_sheet = QPlainTextEdit(self)
+        self.conf_sheet.setReadOnly(True)
         vbox.addWidget(self.conf_sheet)
 
-class ConfData(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.left = 500
-        self.top = 200
-        self.width = 300
-        self.height = 250
-        p = self.palette()
-        p.setColor(QPalette.Window, Qt.white)
-        self.setPalette(p)
-        self.setWindowTitle("Transistor Wizard")
-        self.mainIcon = "transistor.jpg"
-        self.hbox = QHBoxLayout()
-        self.gif()
-        self.labels_icons()
-        self.setLayout(self.hbox)
+        self.pdf_button = QPushButton("Guardar como pdf")
+        self.pdf_button.setFont(QFont("Times", 12))
+        self.pdf_button.setMinimumHeight(60)
+        self.pdf_button.setIcon(QIcon("Icons/pdf.png"))
+        self.pdf_button.clicked.connect(self.pdfExport)
 
-    def gif(self):
-        ##Configuracion del gif#########
-        self.movie = QMovie("Icons/CC_background.gif", QByteArray(), self)
-        self.movie_screen = QLabel()
-        self.movie_screen.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.movie_screen.setAlignment(Qt.AlignCenter)
-        self.movie.setCacheMode(QMovie.CacheAll)
-        self.movie_screen.setMovie(self.movie)
-        self.movie.start()
-        self.movie.loopCount()
-        self.hbox.addWidget(self.movie_screen)
+        self.print_button = QPushButton("Imprimir")
+        self.print_button.setIcon(QIcon("Icons/printer.png"))
+        self.print_button.setMinimumHeight(60)
+        self.print_button.setFont(QFont("Times", 12))
+        self.print_button.clicked.connect(self.printDialog)
 
-    def labels_icons(self):
-        grid = QGridLayout()
+        hbox.addWidget(self.pdf_button)
+        hbox.addWidget(self.print_button)
+        vbox.addLayout(hbox)
+        self.setLayout(vbox)
 
-        c1_label = QLabel("C1")
-        c1_image = QLabel(self)
-        c1_pixmap = QPixmap("Icons/C1.png")
-        c1_image.setPixmap(c1_pixmap)
-        grid.addWidget(c1_label,0,0)
-        grid.addWidget(c1_image,0,1)
+    def pdfExport(self):
+        fn, _ = QFileDialog.getSaveFileName(self, "Export PDF", None, "PDF files (.pdf)//All Files")
 
-        c2_label = QLabel("C2")
-        c2_image = QLabel(self)
-        c2_pixmap = QPixmap("Icons/C2.png")
-        c2_image.setPixmap(c1_pixmap)
-        grid.addWidget(c2_label, 1, 0)
-        grid.addWidget(c2_image, 1, 1)
+        if fn != '':
+            if QFileInfo(fn).suffix() == "":fn += '.pdf'
+            printer = QPrinter(QPrinter.HighResolution)
+            printer.setOutputFormat(QPrinter.PdfFormat)
+            printer.setOutputFileName(fn)
+            self.conf_sheet.print_(printer)
 
-        c3_label = QLabel("C3")
-        c3_image = QLabel(self)
-        c3_pixmap = QPixmap("Icons/C3.png")
-        c3_image.setPixmap(c3_pixmap)
-        grid.addWidget(c3_label, 2, 0)
-        grid.addWidget(c3_image, 2, 1)
+    def printDialog(self):
+        printer = QPrinter(QPrinter.HighResolution)
+        dialog = QPrintDialog(printer, self)
 
-        r1_label = QLabel("R1")
-        r1_image = QLabel(self)
-        r1_pixmap = QPixmap("Icons/R1.png")
-        r1_image.setPixmap(r1_pixmap)
-        grid.addWidget(r1_label, 3, 0)
-        grid.addWidget(r1_image, 3, 1)
-
-        r2_label = QLabel("R2")
-        r2_image = QLabel(self)
-        r2_pixmap = QPixmap("Icons/R2.png")
-        r2_image.setPixmap(r2_pixmap)
-        grid.addWidget(r2_label, 4, 0)
-        grid.addWidget(r2_image, 4, 1)
-
-        re1_label = QLabel("RE1")
-        re1_image = QLabel(self)
-        re1_pixmap = QPixmap("Icons/RE1.png")
-        re1_image.setPixmap(re1_pixmap)
-        grid.addWidget(re1_label, 0, 2)
-        grid.addWidget(re1_image, 0, 3)
-
-        re2_label = QLabel("RE2")
-        re2_image = QLabel(self)
-        re2_pixmap = QPixmap("Icons/RE2.png")
-        re2_image.setPixmap(re2_pixmap)
-        grid.addWidget(re2_label, 1, 2)
-        grid.addWidget(re2_image, 1, 3)
-
-        rc_label = QLabel("RC")
-        rc_image = QLabel(self)
-        rc_pixmap = QPixmap("Icons/RC.png")
-        rc_image.setPixmap(rc_pixmap)
-        grid.addWidget(rc_label, 2, 2)
-        grid.addWidget(rc_image, 2, 3)
-
-        rl_label = QLabel("RL")
-        rl_image = QLabel(self)
-        rl_pixmap = QPixmap("Icons/RL.png")
-        rl_image.setPixmap(rl_pixmap)
-        grid.addWidget(rl_label, 3, 2)
-        grid.addWidget(rl_image, 3, 3)
-
-        vcc_label = QLabel("VCC")
-        vcc_image = QLabel(self)
-        vcc_pixmap = QPixmap("Icons/VCC.png")
-        vcc_image.setPixmap(vcc_pixmap)
-        grid.addWidget(vcc_label, 4, 2)
-        grid.addWidget(vcc_image, 4, 3)
-
-        self.hbox.addLayout(grid)
+        if dialog.exec() == QPrintDialog.Accepted:
+            self.conf_sheet.print_(printer)
 
 class Conftran(QWidget):
     def __init__(self):
@@ -284,23 +243,168 @@ class Conftran(QWidget):
         else:
             QMessageBox.about(self, "Error", "Por favor seleccione un transistor")
 
+class ConfData(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.left = 500
+        self.top = 200
+        self.width = 300
+        self.height = 250
+        p = self.palette()
+        p.setColor(QPalette.Window, Qt.white)
+        self.setPalette(p)
+        self.setWindowTitle("Transistor Wizard")
+        self.mainIcon = "transistor.jpg"
+        self.re_label = None
+        self.re2_label = None
+        self.re1_label = None
+        self.c3_label = None
+        self.rc_label = None
+        self.hbox = QHBoxLayout()
+        self.labels_icons()
+        self.setLayout(self.hbox)
+
+    def labels_icons(self):
+        self.grid = QGridLayout()
+
+        self.c1_label = QLabel("C1")
+        self.c1_label.setFont(QFont("Times", 14))
+        c1_image = QLabel(self)
+        c1_pixmap = QPixmap("Icons/C1.png")
+        c1_image.setPixmap(c1_pixmap)
+        self.grid.addWidget(self.c1_label,0,0)
+        self.grid.addWidget(c1_image,0,1)
+
+        self.c2_label = QLabel("C2")
+        self.c2_label.setFont(QFont("Times", 14))
+        c2_image = QLabel(self)
+        c2_pixmap = QPixmap("Icons/C2.png")
+        c2_image.setPixmap(c2_pixmap)
+        self.grid.addWidget(self.c2_label, 1, 0)
+        self.grid.addWidget(c2_image, 1, 1)
+
+        self.r1_label = QLabel("R1")
+        self.r1_label.setFont(QFont("Times", 14))
+        r1_image = QLabel(self)
+        r1_pixmap = QPixmap("Icons/R1.png")
+        r1_image.setPixmap(r1_pixmap)
+        self.grid.addWidget(self.r1_label, 3, 0)
+        self.grid.addWidget(r1_image, 3, 1)
+
+        self.r2_label = QLabel("R2")
+        self.r2_label.setFont(QFont("Times", 14))
+        r2_image = QLabel(self)
+        r2_pixmap = QPixmap("Icons/R2.png")
+        r2_image.setPixmap(r2_pixmap)
+        self.grid.addWidget(self.r2_label, 4, 0)
+        self.grid.addWidget(r2_image, 4, 1)
+
+        self.rl_label = QLabel("RL")
+        self.rl_label.setFont(QFont("Times", 14))
+        rl_image = QLabel(self)
+        rl_pixmap = QPixmap("Icons/RL.png")
+        rl_image.setPixmap(rl_pixmap)
+        self.grid.addWidget(self.rl_label, 3, 2)
+        self.grid.addWidget(rl_image, 3, 3)
+
+        self.vcc_label = QLabel("VCC")
+        self.vcc_label.setFont(QFont("Times", 14))
+        vcc_image = QLabel(self)
+        vcc_pixmap = QPixmap("Icons/VCC.png")
+        vcc_image.setPixmap(vcc_pixmap)
+        self.grid.addWidget(self.vcc_label, 4, 2)
+        self.grid.addWidget(vcc_image, 4, 3)
+
+    def EC_CC_choice(self):
+        if mainwindow.conftran.config_selected == "EC":
+            self.EC_mode()
+        elif mainwindow.conftran.config_selected == "CC":
+            self.CC_mode()
+
+    def EC_mode(self):
+        if self.re_label != None:
+            self.re_image.close()
+            self.grid.removeWidget(self.re_image)
+            self.re_label.close()
+            self.grid.removeWidget(self.re_label)
+        self.c3_label = QLabel("C3")
+        self.c3_label.setFont(QFont("Times", 14))
+        self.c3_image = QLabel(self)
+        c3_pixmap = QPixmap("Icons/C3.png")
+        self.c3_image.setPixmap(c3_pixmap)
+        self.grid.addWidget(self.c3_label, 2, 0)
+        self.grid.addWidget(self.c3_image, 2, 1)
+
+        self.rc_label = QLabel("RC")
+        self.rc_label.setFont(QFont("Times", 14))
+        self.rc_image = QLabel(self)
+        rc_pixmap = QPixmap("Icons/RC.png")
+        self.rc_image.setPixmap(rc_pixmap)
+        self.grid.addWidget(self.rc_label, 2, 2)
+        self.grid.addWidget(self.rc_image, 2, 3)
+
+
+        self.re1_label = QLabel("RE1")
+        self.re1_label.setFont(QFont("Times", 14))
+        self.re1_image = QLabel(self)
+        re1_pixmap = QPixmap("Icons/RE1.png")
+        self.re1_image.setPixmap(re1_pixmap)
+        self.grid.addWidget(self.re1_label, 0, 2)
+        self.grid.addWidget(self.re1_image, 0, 3)
+
+        self.re2_label = QLabel("RE2")
+        self.re2_label.setFont(QFont("Times", 14))
+        self.re2_image = QLabel(self)
+        re2_pixmap = QPixmap("Icons/RE2.png")
+        self.re2_image.setPixmap(re2_pixmap)
+        self.grid.addWidget(self.re2_label, 1, 2)
+        self.grid.addWidget(self.re2_image, 1, 3)
+        self.hbox.addLayout(self.grid)
+
+    def CC_mode(self):
+        if self.re2_label != None:
+            self.re2_label.close()
+            self.grid.removeWidget(self.re2_label)
+            self.re2_image.close()
+            self.grid.removeWidget(self.re2_image)
+            self.re1_label.close()
+            self.grid.removeWidget(self.re1_label)
+            self.re1_image.close()
+            self.grid.removeWidget(self.re1_image)
+            self.c3_label.close()
+            self.grid.removeWidget(self.c3_label)
+            self.c3_image.close()
+            self.grid.removeWidget(self.c3_image)
+            self.rc_label.close()
+            self.grid.removeWidget(self.rc_label)
+            self.rc_image.close()
+            self.grid.removeWidget(self.rc_image)
+
+        self.re_label = QLabel("RE")
+        self.re_label.setFont(QFont("Times", 14))
+        self.re_image = QLabel(self)
+        re_pixmap = QPixmap("Icons/RE.png")
+        self.re_image.setPixmap(re_pixmap)
+        self.grid.addWidget(self.re_label, 2, 0)
+        self.grid.addWidget(self.re_image, 2, 1)
+        self.hbox.addLayout(self.grid)
+
 class Parameters(QWidget):
     def __init__(self, config):
         super().__init__()
-        self.top = 400
-        self.left = 300
+        self.top = 250
+        self.left = 500
         self.height = 200
         self.width = 200
         self.config = config
         p = self.palette()
         p.setColor(QPalette.Window, Qt.white)
+        self.reset_enable = False
         self.setPalette(p)
         self.setGeometry(self.left, self.top, self.width, self.height)
         self.setWindowIcon(QIcon("Transistor.png"))
         self.setWindowTitle("Seleccion de parametros")
         self.stage = 0
-        self.transistor_name = ""
-        print(self.transistor_name)
         self.parameters = {}
         self.InitWindow()
 
@@ -380,35 +484,85 @@ class Parameters(QWidget):
                         self.parameters['RL'] = self.to_float(self.RL_textedit.text())
                         self.parameters['VCC'] = self.to_float(self.VCC_textedit.text())
                         self.parameters['F'] = self.to_float(self.F_textedit.text())
-                        mainwindow.vbox.removeWidget(mainwindow.btn_start)
+                        mainwindow.movie_screen.close()
+                        mainwindow.grid.removeWidget(mainwindow.movie_screen)
+                        mainwindow.btn_start.close()
+                        mainwindow.grid.removeWidget(mainwindow.btn_start)
                         if self.config == 'EC':
                             if self.AV_textedit.text() != '' and self.test_syntax(self.AV_textedit.text()):
                                 self.parameters['AV'] = self.to_float(self.AV_textedit.text())
-                                mainwindow.vbox.removeWidget(mainwindow.movie_screen)
-                                mainwindow.movie.stop()
                                 self.stage = Stage(mainwindow.conftran.transistor_name)
                                 self.stage.build_stage_EC(self.parameters['RS'], self.parameters['RL'], self.parameters['AV'], self.parameters['F'], self.parameters['VCC'])
-                                mainwindow.parameters_conf = self.stage.get_parameters()
-                                mainwindow.datasheet.setPlainText(str(mainwindow.parameters_conf))
-                                mainwindow.vbox.addWidget(mainwindow.datasheet)
-                                mainwindow.setLayout(mainwindow.vbox)
-                                mainwindow.show()
+                                parameters = self.stage.get_parameters()
+                                ##gif
+                                if self.stage.Values_model_transistor['Darlington'] == 1:
+                                    mainwindow.clip = "Icons/EC_pnp_Darlington.gif"
+                                else:
+                                    if self.stage.Values_model_transistor['Type'] == "npn":
+                                        mainwindow.clip = "Icons/EC_npn_background.gif"
+                                    else:
+                                       mainwindow.clip = "Icons/EC_pnp_background.gif"
+                                mainwindow.gif(mainwindow.clip)
+                                ##set parameters
+                                mainwindow.confdata.EC_CC_choice()
+                                mainwindow.confdata.c1_label.setText(str(parameters['C1']))
+                                mainwindow.confdata.c2_label.setText(str(parameters['C2']))
+                                mainwindow.confdata.c3_label.setText(str(parameters['C3']))
+                                mainwindow.confdata.r1_label.setText(str(parameters['R1']))
+                                mainwindow.confdata.r2_label.setText(str(parameters['R2']))
+                                mainwindow.confdata.re1_label.setText(str(parameters['Re1']))
+                                mainwindow.confdata.re2_label.setText(str(parameters['Re2']))
+                                mainwindow.confdata.rc_label.setText(self.RL_textedit.text())
+                                mainwindow.confdata.vcc_label.setText(self.VCC_textedit.text())
+                                mainwindow.confdata.rl_label.setText(self.RL_textedit.text())
+
+                                ##tabs
+                                Component_manager.To_comercial_parameters(parameters)
+                                mainwindow.grid.addWidget(mainwindow.tabs, 0, 1)
+                                mainwindow.confsheet.conf_sheet.clear()
+                                mainwindow.confsheet.conf_sheet.appendPlainText(f'Transistor = {mainwindow.conftran.transistor_name}')
+                                for index in parameters:
+                                    mainwindow.confsheet.conf_sheet.appendPlainText(f'{index} = {parameters[index]}')
+                                mainwindow.confsheet.conf_sheet.setFont(QFont("Times", 15))
+                                mainwindow.showMaximized()
+                                self.reset_enable = True
                                 self.close()
                             else:
                                 QMessageBox.about(self, "Error AV", "Valor AV invalido o no ingresado")
                         elif self.config == 'CC':
                             if self.AI_textedit.text() != '' and self.test_syntax(self.AI_textedit.text()):
                                 self.parameters['AI'] = self.to_float(self.AI_textedit.text())
-                                mainwindow.vbox.removeWidget(mainwindow.movie_screen)
                                 self.stage = Stage(mainwindow.conftran.transistor_name)
                                 self.stage.build_stage_CC(self.parameters['RS'], self.parameters['RL'],
                                                           self.parameters['F'], self.parameters['AI'],
                                                           self.parameters['VCC'])
-                                mainwindow.parameters_conf = self.stage.get_parameters()
-                                mainwindow.datasheet.setPlainText(str(mainwindow.parameters_conf))
-                                mainwindow.vbox.addWidget(mainwindow.datasheet)
-                                mainwindow.setLayout(mainwindow.vbox)
-                                mainwindow.show()
+                                parameters = self.stage.get_parameters()
+                                ##gif
+                                if self.stage.Values_model_transistor['Darlington'] == 1:
+                                    mainwindow.clip = "Icons/CC_Background_Darlington.gif"
+                                else:
+                                    mainwindow.clip = "Icons/CC_Background.gif"
+                                mainwindow.gif(mainwindow.clip)
+                                ##set parameters
+                                mainwindow.confdata.EC_CC_choice()
+                                mainwindow.confdata.c1_label.setText(str(parameters['C1']))
+                                mainwindow.confdata.c2_label.setText(str(parameters['C2']))
+                                mainwindow.confdata.r1_label.setText(str(parameters['R1']))
+                                mainwindow.confdata.r2_label.setText(str(parameters['R2']))
+                                mainwindow.confdata.re_label.setText(str(parameters['Re']))
+                                mainwindow.confdata.vcc_label.setText(self.VCC_textedit.text())
+                                mainwindow.confdata.rl_label.setText(self.RL_textedit.text())
+                                ##tabs
+                                Component_manager.To_comercial_parameters(parameters)
+                                mainwindow.grid.addWidget(mainwindow.tabs, 0, 1)
+                                mainwindow.confsheet.conf_sheet.clear()
+                                mainwindow.confsheet.conf_sheet.appendPlainText(
+                                    f'Transistor = {mainwindow.conftran.transistor_name}')
+                                for index in parameters:
+                                    mainwindow.confsheet.conf_sheet.appendPlainText(f'{index} = {parameters[index]}')
+                                mainwindow.confsheet.conf_sheet.setFont(QFont("Times", 15))
+                                mainwindow.showMaximized()
+                                self.reset_enable = True
                                 self.close()
                             else:
                                 QMessageBox.about(self, "Error AI", "Valor AI invalido o no ingresado")
@@ -458,9 +612,26 @@ class Parameters(QWidget):
         self.AV_textedit.setText('')
         self.F_textedit.setText('')
 
+class help(QWidget):
+    def __init__(self):
+        super().__init__()
+        vbox = QVBoxLayout()
+        self.setWindowTitle("Ayuda")
+        self.setWindowIcon(QIcon("Icons/help.png"))
+        label = QLabel("Gracias profesor victor por las clases XD")
+        label.setFont(QFont("Times", 14))
+        image = QLabel(self)
+        p = self.palette()
+        p.setColor(QPalette.Window, Qt.white)
+        self.setPalette(p)
+        pixmap = QPixmap("Icons/Amplifier.png")
+        image.setPixmap(pixmap)
+        vbox.addWidget(image)
+        vbox.addWidget(label)
+        self.setLayout(vbox)
 
 if __name__ == "__main__":
     App = QApplication(sys.argv)
-    mainwindow = ConfData()
-    mainwindow.show()
+    mainwindow = MainWindow()
+    mainwindow.showMaximized()
     sys.exit(App.exec())

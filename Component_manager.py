@@ -105,10 +105,9 @@ class Component_manager:
 
 def To_comercial_parameters(Parameters):
     for index in Parameters:
-        for index2 in Parameters[index]:
-            if index2[0] == 'R':
-                c = Component_manager(Parameters[index][index2], 'r')
-                Parameters[index][index2] = c.show_comercials()
-            elif index2[0] == 'C':
-                c = Component_manager(Parameters[index][index2], 'c')
-                Parameters[index][index2] = c.show_comercials()
+            if index[0] == 'R':
+                c = Component_manager(Parameters[index], 'r')
+                Parameters[index] = c.show_comercials()
+            elif index[0] == 'C':
+                c = Component_manager(Parameters[index], 'c')
+                Parameters[index] = c.show_comercials()
