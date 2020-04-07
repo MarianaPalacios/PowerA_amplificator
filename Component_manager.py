@@ -7,35 +7,51 @@ class Component_manager:
                                     5.6, 6.8, 8.2, 10]
         self.Comercial_Capacitors = [1, 1.2, 2.2, 3.3,
                                      4.7, 5.6, 6.8, 8.2, 10]
+        self.type = type
         self.index = 0
         self.Component_stack = stack()
         self.Current_Component = c
         self.dot_amount = 0
         self.multiplier_amount = 0
         self.multiplier = 0
+        self.multiplier_capacitor = ''
         self.Error_Component_vector = False
         self.Component_value = c
+        self.exp_rectifier = 0
         self.Component = 0
         if isinstance(self.Component_value, str):
             self.to_decimal()
-        if type != "R_no_comercial":
-            if type.lower() == 'c' or type.lower() == 'r':
-               if type.lower() == 'c':
+        if self.type != "R_no_comercial":
+            if self.type.lower() == 'c' or self.type.lower() == 'r':
+               if self.type.lower() == 'c':
                   self.normalization_value = self.normalization(self.Component_value)
                   self.Component_value = self.Component_value * pow(10, self.normalization_value)
             else:
                 raise AssertionError('Tipo de componente no valido')
             self.tmp = self.Component_value
             self.Component_container = stack()
-            if type.lower() == 'r':
+            if self.type.lower() == 'r':
                 while self.tmp >= 1:
                         self.Component_values = self.heavier_values_Component(self.tmp)
-                        self.Component_container.push(self.Comercial_comparation(self.Component_values, type)*pow(10,self.get_exp(self.tmp)))
-                        self.tmp = self.tmp - self.Comercial_comparation(self.Component_values, type)*pow(10,self.get_exp(self.tmp))
-            elif type.lower() == 'c':
+                        self.Component_container.push(f'{self.Comercial_comparation(self.Component_values, self.type)*pow(10,self.get_exp(self.tmp))}\u03A9')
+                        self.tmp = self.tmp - self.Comercial_comparation(self.Component_values, self.type)*pow(10,self.get_exp(self.tmp))
+            elif self.type.lower() == 'c':
                 self.Component_values = self.heavier_values_Component(self.tmp)
-                self.Component_container.push(self.Comercial_comparation(self.Component_values, type) * pow(10, self.get_exp(self.tmp)))
-                self.Component_container.normalize(self.normalization_value)
+                if self.normalization_value > 3 and self.normalization_value <= 6:
+                    self.multiplier_capacitor = '\u03bc'
+                    self.exp_rectifier = 6 - self.normalization_value
+                elif self.normalization_value > 6 and self.normalization_value <= 9:
+                    self.multiplier_capacitor = 'n'
+                    self.exp_rectifier = 9 - self.normalization_value
+                elif self.normalization_value <= 3 and self.normalization_value > 1:
+                    self.multiplier_capacitor = 'm'
+                    self.exp_rectifier = 3 - self.normalization_value
+                elif self.normalization_value <= 12 and self.normalization_value > 9:
+                    self.multiplier_capacitor = 'p'
+                    self.exp_rectifier = 12 - self.normalization_value
+
+                self.Component_container.push(f'{int(self.Comercial_comparation(self.Component_values, self.type) * pow(10, self.exp_rectifier))}'
+                                              f'{self.multiplier_capacitor}F')
 
     def to_decimal(self):
         while self.index < len(self.Current_Component) and self.dot_amount < 2 and self.multiplier_amount < 2:
@@ -44,7 +60,7 @@ class Component_manager:
                 if self.Component == '.':
                     self.dot_amount += 1
                 self.Component_stack.push(self.Component)
-            elif self.Component.lower() in "kmun":
+            elif self.Component.lower() in "kmunp":
                 self.multiplier = self.Component.lower()
                 self.multiplier_amount += 1
             else:
@@ -58,17 +74,23 @@ class Component_manager:
             if self.multiplier == 'k':
                 self.Component_value = float(self.Component_stack.listToString()) * 1000
             elif self.multiplier == 'm':
-                self.Component_value = float(self.Component_stack.listToString()) * 1000000
+                print('anus')
+                if self.type.lower() == 'r':
+                    self.Component_value = float(self.Component_stack.listToString()) * 1000000
+                if self.type.lower() == 'c':
+                    self.Component_value = float(self.Component_stack.listToString()) * 0.001
             elif self.multiplier == 'u':
                 self.Component_value = float(self.Component_stack.listToString()) * 0.000001
             elif self.multiplier == 'n':
                 self.Component_value = float(self.Component_stack.listToString()) * 0.000000001
+            elif self.multiplier == 'p':
+                self.Component_value = float(self.Component_stack.listToString()) * 0.000000000001
             else:
                 self.Component_value = float(self.Component_stack.listToString())
 
     def normalization(self,C):
         self.exp_normalization = 0
-        while(C <= 100):
+        while(C <= 1):
             C*=10
             self.exp_normalization+=1
         return self.exp_normalization
@@ -91,6 +113,7 @@ class Component_manager:
             return self.vector_component[self.index - 1]
         elif type.lower() == 'c':
             return self.vector_component[self.index]
+
     def get_exp(self, number):
         self.number = number
         self.times = 0

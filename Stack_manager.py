@@ -23,7 +23,3 @@ class stack():
             self.str += self.i
         return self.str
 
-    def normalize(self,exp):
-        self.index = 0
-        for self.index in range(len(self.item)):
-            self.item[self.index] *= pow(0.1,exp)

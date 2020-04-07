@@ -13,13 +13,15 @@ class TransistorManager:
             self.model_location = 0
             self.shape = [0, range(len(self.transistors_content))]
             self.transistor_specs = {}
+            self.transistor_avaliable = False
             if model != 'show':
                 self.show_transitors_avaliables()
                 # aqui se busca si hay coincidencia con el transistor ingresado
                 for self.tmp_index in range(len(self.models_db)):
                     if self.models_db[self.tmp_index] == model:
+                        self.transistor_avaliable = True
                         self.model_location = self.tmp_index
-                if self.model_location != 0:
+                if self.transistor_avaliable == True:
                     # Aqui se crea un array con los specs
                     for self.index in range(len(self.transistors_content[0]) - 1):
                         if self.transistors_content[0][self.index] != ',':
@@ -48,7 +50,7 @@ class TransistorManager:
                     raise AssertionError('Transistor no esta en base de datos')
 
     def get_transitor_specs(self):
-        if self.model_location != 0:
+        if self.transistor_avaliable:
             for self.tmp_index in range(len(self.model_specs)):
                 if self.tmp_index > 1:
                      self.transistor_specs[self.specs[self.tmp_index]] = float(self.model_specs[self.tmp_index])

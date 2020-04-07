@@ -1,2 +1,9 @@
 *.png
 Icons/*
+.idea/*
+build/*
+dist/*
+Icons/*
+Sounds/*
+*.pdf
+*.exe

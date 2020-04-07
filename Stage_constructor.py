@@ -11,18 +11,22 @@ class Stage:
         self.parameters = {}
         self.pi = 3.141592
 
-    def build_stage_CC(self, RS, RL, fc, AI, VCC):
+    def build_stage_CC(self, RS, RL, fc, fcs, AI):
+        self.parameters['VCC'] = 5
         self.parameters['RS'] = RS
+        self.parameters['RL'] = RL
         self.parameters['ICQ'] = self.Values_model_transistor['IC.Stable']*0.1
         self.parameters['Hib'] = self.VT/self.parameters['ICQ']
         self.parameters['hfe_MID'] = self.Values_model_transistor['hfe.MAX']*0.5
-        if self.Values_model_transistor['Darlington']:
+        if self.Values_model_transistor['Darlington'] == 1:
              self.parameters['VBE'] = 1.4
         else:
             self.parameters['VBE'] = 0.7
         self.parameters['Hie'] = self.parameters['hfe_MID']*self.parameters['Hib']
         self.parameters['RL'] = RL
-        self.parameters['Re'] = VCC/self.parameters['ICQ'] - RL
+        if 0 > self.parameters['VCC']/self.parameters['ICQ'] - RL:
+            self.parameters['VCC'] = self.vcc_CC_fix()
+        self.parameters['Re'] = self.parameters['VCC']/self.parameters['ICQ'] - RL
         self.parameters['RB'] = AI*RL
         self.parameters['Ren'] = self.parallel(self.parameters['RB'], self.parameters['Hie'] + 0.5*self.parameters['hfe_MID']*RL) + self.parameters['RS']
         if 0.1*self.parameters['hfe_MID']*self.parameters['Re'] < self.parameters['RB']:
@@ -30,14 +34,17 @@ class Stage:
         else:
             self.parameters['Stable_status'] = True
         self.parameters['IB'] = self.parameters['ICQ']/self.parameters['hfe_MID']
-        self.parameters['VBB'] =self.parameters['IB']*(self.parameters['RB']+(self.parameters['hfe_MID']+1)*self.parameters['Re']) + self.parameters['VBE']
-        self.parameters['R1'] = self.parameters['RB']*VCC/self.parameters['VBB']
-        self.parameters['R2'] = self.parameters['RB']*VCC/(VCC - self.parameters['VBB'])
+        self.parameters['VBB'] = self.parameters['IB']*(self.parameters['RB']+(self.parameters['hfe_MID']+1)*self.parameters['Re']) + self.parameters['VBE']
+        if self.parameters['VBB'] > self.parameters['VCC']:
+            self.parameters['VCC'] = self.vcc_CC_fix2()
+        self.parameters['R1'] = self.parameters['RB']*self.parameters['VCC']/self.parameters['VBB']
+        self.parameters['R2'] = self.parameters['RB']*self.parameters['VCC']/(self.parameters['VCC'] - self.parameters['VBB'])
         self.parameters['C1'] = 10 / (2 * self.pi * fc* self.parameters['Ren'])
         self.parameters['C2'] = 10 / (2 * self.pi * fc* (self.parameters['Re'] + RL))
+        self.parameters['C4'] = 1/(2*self.pi*fcs*0.5*self.parallel(self.parameters['Re'],self.parameters['RL']))
         return self.parameters
 
-    def build_stage_EC(self, RS, RL, AV, fc, VCC):
+    def build_stage_EC(self, RS, RL, AV, fc, fcs, VCC):
         self.parameters['RS'] = RS
         self.parameters['AV'] = AV
         self.parameters['RL'] = RL
@@ -64,10 +71,21 @@ class Stage:
         self.parameters['C1'] = 10/(2*self.pi*fc*0.1*self.parameters['Ren'])
         self.parameters['C2'] = 10/(2*self.pi*fc*0.1*2*RL)
         self.parameters['C3'] = 10/(2*self.pi*fc*0.1*self.parallel(self.parameters['RB']+self.parameters['Hib'],self.parameters['Re']))
+        self.parameters['C4'] = 1/(2*self.pi*fcs*self.parallel(self.parameters['RL'],self.parameters['Re']))
     def vcc_selection_ec(self):
         self.VCC_Minimun = self.parameters['ICQ'] * (1.5 * self.parameters['RL'] + self.parameters['Re1'])
         for self.index in range(len(self.VCC_nominal)):
             if self.VCC_Minimun < self.VCC_nominal[self.index]:
+                return self.VCC_nominal[self.index + 1]
+
+    def vcc_CC_fix(self):
+        for self.index in range(len(self.VCC_nominal)):
+            if self.VCC_nominal[self.index]/self.parameters['ICQ'] > self.parameters['RL']:
+                return self.VCC_nominal[self.index + 1]
+
+    def vcc_CC_fix2(self):
+        for self.index in range(len(self.VCC_nominal)):
+            if self.VCC_nominal[self.index] > self.parameters['VBB']:
                 return self.VCC_nominal[self.index + 1]
 
     def parallel(self, R1, R2):
